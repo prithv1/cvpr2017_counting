@@ -8,6 +8,8 @@ Training utilities
 
 require 'nn'
 require 'rnn'
+require 'sys'
+require 'xlua'
 require 'dpnn'
 require 'eval'
 require 'paths'
@@ -134,8 +136,84 @@ function prepare_sequence(feat_mat)
 	return perm_feat1, perm_feat2
 end
 
-function train_utils:glance_train( ... )
-	-- body
+function train_utils:glance_train(model, gpu_flag, gpu_id, cudnn_flag, des_bsize, param, gparam)
+	--[[
+	(Training function for glancing and associative subitizing)
+	(Associative Subitizing is glancing at a cell-level; Specify mode and discretization)
+	Arguments
+	**********
+	model: nn.Sequential() model to get predictions
+	gpu_flag: whether to use a GPU or not
+	gpu_id: corresponding GPU IDs
+	cudnn_flag: whether to CuDNN
+	des_bsize: desired batchsize
+
+	Returns
+	**********
+	(Return the metrics to be logged on the split)
+	]]
+	model:training()
+	local split_loss = {}
+	local img_list = {}
+	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
+	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
+	-- Get batch size
+	local bsize = get_batchsize(#img_list, des_bsize)
+	local shuffle = torch.randperm(#img_list)
+	-- Feature tensor per-batch
+	Xt = torch.zeros(bsize*self.disc_size, self.feat_dim)
+	Yt = torch.zeros(bsize*self.disc_size, self.nout)
+	if gpu_flag then
+		require 'cutorch'
+		require 'cunn'
+		cutorch.setDevice(gpu_id + 1)
+		model:cuda()
+		Yo = Yo:cuda()
+		if cudnn_flag then
+			require 'cudnn'
+			cudnn.benchmark = true
+			cudnn.fastest = true
+			cudnn.verbose = true
+			cudnn.convert(model, cudnn)	
+		end
+	end
+	for it = 1,#img_list,bsize do
+		local batch_id = ((it-1)/bsize) + 1
+		xlua.progress(batch_id, torch.floor(#img_list/bsize))
+		if (it + bsize - 1) > #img_list then
+			break
+		end
+		local idx = 1
+		for i = it,it+bsize-1 do
+			local feat_path = self.feat_dir .. paths.basename(img_list[shuffle[i]]) .. '.h5'
+			local feat_h5 = hdf5.open(feat_path, 'r')
+			if self.disc > 1 then
+				Xt[{{1+(idx-1)*self.disc_size, idx*self.disc_size}, {1, self.feat_dim}}] = feat_h5:read('/data'):all()
+				Yt[{{1+(idx-1)*self.disc_size, idx*self.disc_size}, {1, self.nout}}] = feat_h5:read('/label'):all()
+			else
+				Xt[idx] = feat_h5:read('/data'):all()
+				Yt[idx] = feat_h5:read('/label'):all()
+			end
+			feat_h5:close()
+			idx = idx + 1
+		end
+		if gpu_flag then
+			Xt = Xt:cuda()
+			Yt = Yt:cuda()
+		end
+		local feval = function(x)
+			if x ~= param then param:copy(x) end
+			model:zeroGradParameters()
+			local pred_counts = model:forward(Xt)
+			local iter_loss = self.criterion:forward(pred_counts, Yt)
+			table.insert(split_loss, iter_loss)
+			local gradOutput = self.criterion:backward(pred_counts, Yt)
+			model:backward(Xt, gradOutput)
+			return iter_loss, gparam
+		end
+		optim[self.optimizer](feval, param, self.optimState)
+	end
+	return utils.table_mean(split_loss)
 end
 
 function train_utils:seq_train(model1, model2, gpu_flag, gpu_id, cudnn_flag, des_bsize, param, gparam)
@@ -154,18 +232,19 @@ function train_utils:seq_train(model1, model2, gpu_flag, gpu_id, cudnn_flag, des
 	**********
 	(Return the metrics to be logged on the split)
 	]]
+	model1:training()
+	model2:training()
 	local split_loss = {}
 	local img_list = {}
 	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
 	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
 	-- Get batch size
 	local bsize = get_batchsize(#img_list, des_bsize)
+	local shuffle = torch.randperm(#img_list)
 	-- Feature tensors and tables per-batch
 	local Xt1 = torch.zeros(bsize, self.disc_size, self.feat_dim)
 	local Xt2 = torch.zeros(bsize, self.disc_size, self.feat_dim)
 	local Yt = torch.zeros(bsize, self.disc_size, self.nout)
-	-- Predictions for the whole split
-	local Yo = torch.zeros(#img_list, self.nout)
 	-- Inverse permutation matrices
 	local inv1 = nn.MM():forward({self.perm1, self.mul_mat})
 	inv1 = torch.repeatTensor(inv1, bsize, 1, 1)
@@ -188,12 +267,14 @@ function train_utils:seq_train(model1, model2, gpu_flag, gpu_id, cudnn_flag, des
 		end
 	end
 	for it = 1,#img_list,bsize do
+		local batch_id = ((it-1)/bsize) + 1
+		xlua.progress(batch_id, torch.floor(#img_list/bsize))
 		if (it + bsize - 1) > #img_list then
 			break
 		end
 		local idx = 1
 		for i = it,it+bsize-1 do
-			local feat_path = self.feat_dir .. paths.basename(img_list[i]) .. '.h5'
+			local feat_path = self.feat_dir .. paths.basename(img_list[shuffle[i]]) .. '.h5'
 			local feat_h5 = hdf5.open(feat_path, 'r')
 			Xt1[idx], Xt2[idx] = prepare_sequence(feat_h5:read('/data'):all())
 			Yt[idx] = feat_h5:read('/label'):all()

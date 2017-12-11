@@ -8,6 +8,8 @@ Forward pass utilities
 
 require 'nn'
 require 'rnn'
+require 'sys'
+require 'xlua'
 require 'paths'
 require 'hdf5'
 require 'math'
@@ -132,6 +134,7 @@ function fprop_utils:glance_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize
 	**********
 	Yo: return predictions for the whole split
 	]]
+	model:evaluate()
 	local img_list = {}
 	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
 	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
@@ -157,6 +160,8 @@ function fprop_utils:glance_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize
 		end
 	end
 	for it = 1,#img_list,bsize do
+		local batch_id = ((it-1)/bsize) + 1
+		xlua.progress(batch_id, torch.floor(#img_list/bsize))
 		if (it + bsize - 1) > #img_list then
 			break
 		end
@@ -193,6 +198,7 @@ function fprop_utils:aso_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
 	**********
 	Yo: return predictions for the whole split
 	]]
+	model:evaluate()
 	-- Keep smaller batch size for associative subitizing
 	local img_list = {}
 	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
@@ -219,6 +225,8 @@ function fprop_utils:aso_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
 		end
 	end
 	for it = 1,#img_list,bsize do
+		local batch_id = ((it-1)/bsize) + 1
+		xlua.progress(batch_id, torch.floor(#img_list/bsize))
 		if (it + bsize - 1) > #img_list then
 			break
 		end
@@ -262,6 +270,8 @@ function fprop_utils:seq_fprop(model1, model2, gpu_flag, gpu_id, cudnn_flag, des
 	**********
 	Yo: return predictions for the whole split
 	]]
+	model1:evaluate()
+	model2:evaluate()
 	-- Keep smaller batch size for associative subitizing
 	local img_list = {}
 	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
@@ -295,6 +305,8 @@ function fprop_utils:seq_fprop(model1, model2, gpu_flag, gpu_id, cudnn_flag, des
 		end
 	end
 	for it = 1,#img_list,bsize do
+		local batch_id = ((it-1)/bsize) + 1
+		xlua.progress(batch_id, torch.floor(#img_list/bsize))
 		if (it + bsize - 1) > #img_list then
 			break
 		end
