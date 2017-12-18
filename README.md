@@ -33,11 +33,21 @@ source ~/.bashrc
 
 ### Train Models
 
-Run the script `train.lua` with appropriate arguments to train models.
+* Run the script `train.lua` with appropriate arguments to train models.
+* Import forward pass functions from `fprop_utils.lua` and evaluate predictions by importing functions from `eval.lua`
 
 ### Datasets
 
 * [Count-QA Splits for VQA/COCO-QA][7]
+
+### Model Checkpoints (Trained with ResNet-152 features)
+
+* [Seq-Sub (3) COCO][12]
+* [Seq-Sub (3) PASCAL][13]
+* [Aso-Sub (3) COCO][8]
+* [Aso-Sub (3) PASCAL][9]
+* [Glance COCO][10]
+* [Glance PASCAL][11]
 
 ## Cite this work
 
@@ -69,3 +79,9 @@ BSD
 [5]: https://github.com/Element-Research/rnn
 [6]: https://github.com/Element-Research/dpnn
 [7]: https://filebox.ece.vt.edu/~prithv1/datasets/
+[8]: https://filebox.ece.vt.edu/~prithv1/checkpoints/aso_sub_resnet-152_coco_3_1hl_500/
+[9]: https://filebox.ece.vt.edu/~prithv1/checkpoints/aso_sub_resnet-152_pascal_3_1hl_500/
+[10]: https://filebox.ece.vt.edu/~prithv1/checkpoints/glance_resnet-152_coco_1_2hl_250/
+[11]: https://filebox.ece.vt.edu/~prithv1/checkpoints/glance_resnet-152_pascal_1_2hl_250/
+[12]: https://filebox.ece.vt.edu/~prithv1/checkpoints/seq_sub_resnet-152_coco_3_2hl_500/
+[13]: https://filebox.ece.vt.edu/~prithv1/checkpoints/seq_sub_resnet-152_pascal_3_2hl_500/
