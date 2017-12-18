@@ -31,6 +31,13 @@ source ~/.bashrc
 * [Element-Research/rnn][5]
 * [Element-Research/dpnn][6]
 
+### Train Models
+
+Run the script `train.lua` with appropriate arguments to train models.
+
+### Datasets
+
+* [Count-QA Splits for VQA/COCO-QA][7]
 
 ## Cite this work
 
@@ -61,3 +68,4 @@ BSD
 [4]: https://github.com/deepmind/torch-hdf5
 [5]: https://github.com/Element-Research/rnn
 [6]: https://github.com/Element-Research/dpnn
+[7]: https://filebox.ece.vt.edu/~prithv1/datasets/
