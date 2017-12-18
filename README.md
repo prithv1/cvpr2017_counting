@@ -50,7 +50,9 @@ source ~/.bashrc
 * Unlike glance, each `<image-name>.h5` should contain features and counts for all the cells based on the discretization used (9 features per-image for discretization 3)
 * The image below shows how the cell features for a 3x3 discretization should be ordered:
 
-![](img/feat_inst.png?raw=true)
+<p align="center">
+  <img src="img/feat_inst.png?raw=true" alt="Feature Demo Image"/>
+</p>
 
 The orderings in the above image correspond to the row-indices of the feature and count tensor (with dimensions `[9 x feat_dim]` and `[9 x num_classes]` respectively) stored under the keys `/data` and `/label` respectively. 
 
