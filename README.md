@@ -36,6 +36,24 @@ source ~/.bashrc
 * Run the script `train.lua` with appropriate arguments to train models.
 * Import forward pass functions from `fprop_utils.lua` and evaluate predictions by importing functions from `eval.lua`
 
+### Feature Extraction, Storage and Use
+
+#### Glance
+
+* Extract and store data from your desired CNN and dataset in `data/feature/your_feat_dir`
+* Store features and ground truth counts on a per-image basis in `data/feature/your_feat_dir/<image-name>.h5` under the keys `/data` and `/label` respectively 
+
+#### Associative and Sequential Subitizing
+
+* Based on the descretization; extract and store data from your desired CNN and dataset in `data/feature/your_feat_dir`
+* Store features and ground truth counts on a per-image basis in `data/feature/your_feat_dir/<image-name>.h5` under the keys `/data` and `/label` respectively
+* Unlike glance, each `<image-name>.h5` should contain features and counts for all the cells based on the discretization used (9 features per-image for discretization 3)
+* The image below shows how the cell features for a 3x3 discretization should be ordered:
+
+![](img/feat_inst.png?raw=true)
+
+The orderings in the above image correspond to the row-indices of the feature and count tensor (with dimensions `[9 x feat_dim]` and `[9 x num_classes]` respectively) stored under the keys `/data` and `/label` respectively. 
+
 ### Datasets
 
 * [Count-QA Splits for VQA/COCO-QA][7]
