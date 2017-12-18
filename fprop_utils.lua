@@ -21,7 +21,6 @@ function fprop_utils:__init(feature_directory, imagelist_dir, disc, feature_dime
 	(Initialize settings for forward passes)
 	Arguments
 	**********
-	split_list: list of images for the corresponding split
 	feature_directory: the directory containing the feature files
 	imagelist_dir: directory containing the image lists
 	disc: the discretization at which we're dealing - 1 for glance, 3 or more for aso-sub/seq-sub
@@ -36,7 +35,6 @@ function fprop_utils:__init(feature_directory, imagelist_dir, disc, feature_dime
 	self.imlist_dir = imagelist_dir
 	self.feat_dim = feature_dimensions
 	self.nout = num_classes
-	-- Utilities required for seq-sub and aso-sub
 	self.disc = disc
 	self.disc_size = disc*disc
 	if self.disc > 1 then
@@ -68,7 +66,7 @@ function fprop_utils:__init(feature_directory, imagelist_dir, disc, feature_dime
 	end
 end
 
-function fprop_utils:get_batchsize(split_size, des_bsize)
+function get_batchsize(split_size, des_bsize)
 	--[[
 	(Get closest batchsize to cover the entire split)
 	Arguments
@@ -82,9 +80,9 @@ function fprop_utils:get_batchsize(split_size, des_bsize)
 	]]
 	local factors = {}
 	for possible_factor = 1,math.sqrt(split_size),1 do
-		local remainder = number % possible_factor
+		local remainder = split_size % possible_factor
 		if remainder == 0 then
-			local factor, factor_pair = possible_factor, number/possible_factor
+			local factor, factor_pair = possible_factor, split_size/possible_factor
 			table.insert(factors, factor)
 			if factor ~= factor_pair then
 				table.insert(factors, factor_pair)
@@ -93,17 +91,20 @@ function fprop_utils:get_batchsize(split_size, des_bsize)
 	end
 	table.sort(factors)
 	factor_tensor = torch.Tensor(factors)
-	_, ind = torch.min(torch.abs(factors - des_bsize))
+	_, ind = torch.min(torch.abs(factor_tensor - des_bsize), 1)
 	exp_bsize = factor_tensor[ind[1]]
 	return exp_bsize
 end
 
-function prepare_sequence(feat_mat)
+function prepare_sequence(feat_mat, perm1, perm2, mul_mat)
 	--[[
 	(Create permuted ordering of features for sequential subitizing)
 	Arguments
 	**********
 	feat_mat: feature matrix containing features for all the cells
+	perm1: the first permutation matrix fir seq-sub
+	perm2: the second permutation matrix fir seq-sub
+	mul_mat: matrix to fix ordering interms of close-cells
 
 	Returns
 	**********
@@ -111,10 +112,10 @@ function prepare_sequence(feat_mat)
 	]]
 	local perm_feat1 = feat_mat:clone()
 	local perm_feat2 = feat_mat:clone()
-	perm_feat1 = nn.MM():forward({self.perm1, perm_feat1})
-	perm_feat1 = nn.MM():forward({self.mul_mat, perm_feat1})
-	perm_feat2 = nn.MM():forward({self.perm2, perm_feat2})
-	perm_feat2 = nn.MM():forward({self.mul_mat, perm_feat2})
+	perm_feat1 = nn.MM():forward({perm1, perm_feat1})
+	perm_feat1 = nn.MM():forward({mul_mat, perm_feat1})
+	perm_feat2 = nn.MM():forward({perm2, perm_feat2})
+	perm_feat2 = nn.MM():forward({mul_mat, perm_feat2})
 	return perm_feat1, perm_feat2
 end
 
@@ -123,6 +124,7 @@ function fprop_utils:glance_fprop(split_list, model, gpu_flag, gpu_id, cudnn_fla
 	(Forward pass for glancing)
 	Arguments
 	**********
+	split_list: list of images for the corresponding split
 	model: nn.Sequential() model
 	gpu_flag: whether to use a GPU or not
 	gpu_id: corresponding GPU IDs
@@ -166,7 +168,7 @@ function fprop_utils:glance_fprop(split_list, model, gpu_flag, gpu_id, cudnn_fla
 		end
 		local idx = 1
 		for i = it,it+bsize-1 do
-			local feat_path = self.feat_dir .. paths.basename(img_list[i]) .. '.h5'
+			local feat_path = self.feat_dir .. '/' .. paths.basename(img_list[i], '.jpg') .. '.h5'
 			local feat_h5 = hdf5.open(feat_path, 'r')
 			Xt[idx] = feat_h5:read('/data'):all()
 			feat_h5:close()
@@ -187,6 +189,7 @@ function fprop_utils:aso_fprop(split_list, model, gpu_flag, gpu_id, cudnn_flag, 
 	(Forward pass for associative subitizing)
 	Arguments
 	**********
+	split_list: list of images for the corresponding split
 	model: nn.Sequential() model
 	gpu_flag: whether to use a GPU or not
 	gpu_id: corresponding GPU IDs
@@ -231,7 +234,7 @@ function fprop_utils:aso_fprop(split_list, model, gpu_flag, gpu_id, cudnn_flag, 
 		end
 		local idx = 1
 		for i = it,it+bsize-1 do
-			local feat_path = self.feat_dir .. paths.basename(img_list[i]) .. '.h5'
+			local feat_path = self.feat_dir .. '/' .. paths.basename(img_list[i], '.jpg') .. '.h5'
 			local feat_h5 = hdf5.open(feat_path, 'r')
 			Xt[{{1+(idx-1)*self.disc_size, idx*self.disc_size}, {1, self.feat_dim}}] = feat_h5:read('/data'):all()
 			feat_h5:close()
@@ -245,7 +248,7 @@ function fprop_utils:aso_fprop(split_list, model, gpu_flag, gpu_id, cudnn_flag, 
 		-- Compress count predictions from the model to get dataset predictions
 		local comp_idx = 1
 		for i = it, it+bsize-1 do
-			local count_ten = Y_t[{{1+(comp_idx-1)*self.disc_size, comp_idx*self.disc_size}, {1, self.nout}}]
+			local count_ten = Yt[{{1+(comp_idx-1)*self.disc_size, comp_idx*self.disc_size}, {1, self.nout}}]
 			Yo[{{i}, {1, self.nout}}] = count_ten:double():sum(1):squeeze()
 			comp_idx = comp_idx + 1
 		end
@@ -258,6 +261,7 @@ function fprop_utils:seq_fprop(split_list, model1, model2, gpu_flag, gpu_id, cud
 	(Forward pass for glancing)
 	Arguments
 	**********
+	split_list: list of images for the corresponding split
 	model1: nn.Sequential() model to get bi-LSTMs output states
 	model2: nn.Sequential() model to get cell-level predictions
 	gpu_flag: whether to use a GPU or not
@@ -311,9 +315,9 @@ function fprop_utils:seq_fprop(split_list, model1, model2, gpu_flag, gpu_id, cud
 		end
 		local idx = 1
 		for i = it,it+bsize-1 do
-			local feat_path = self.feat_dir .. paths.basename(img_list[i]) .. '.h5'
+			local feat_path = self.feat_dir .. '/' .. paths.basename(img_list[i], '.jpg') .. '.h5'
 			local feat_h5 = hdf5.open(feat_path, 'r')
-			Xt1[idx], Xt2[idx] = prepare_sequence(feat_h5:read('/data'):all())
+			Xt1[idx], Xt2[idx] = prepare_sequence(feat_h5:read('/data'):all(), self.perm1, self.perm2, self.mul_mat)
 			feat_h5:close()
 			idx = idx + 1
 		end

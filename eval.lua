@@ -95,7 +95,7 @@ function eval:mse(non_zero, count_pred, count_gt)
 		nzero_mask = nzero_mask:fill(0)
 		nzero_mask[count_gt:ne(0)] = 1
 	end
-	local mse = torch.pow(targets - count_pred, 2)
+	local mse = torch.pow(count_gt - count_pred, 2)
 	mse = torch.cmul(mse, nzero_mask)
 	mse = mse:mean()
 	nzero = nzero_mask:mean()
