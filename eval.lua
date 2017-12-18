@@ -67,10 +67,41 @@ function eval:sampled_eval(metric, non_zero, count_pred, count_gt, trials)
 			res[i] = eval:mrmse(non_zero, pred_trial, gt_trial)
 		elseif metric == 'rel_mrmse' then
 			res[i] = eval:rel_mrmse(non_zero, pred_trial, gt_trial)
+		elseif metric == 'mse' then
+			res[i] = eval:mse(non_zero, pred_trial, gt_trial)
 		end
 	end
 	return res:mean(), res:std()
 end
+
+function eval:mse(non_zero, count_pred, count_gt)
+	--[[
+	(Mean Squared Error)
+	Arguments
+	**********
+	non_zero: whether to evaluate on non-zero/all_counts
+	count_pred: the raw count predictions from the model
+	count_gt: the ground truth counts from the dataset
+
+	Returns
+	**********
+	mse: MSE
+	]]
+	count_pred = count_pred:double()
+	count_gt = count_gt:double()
+	local nzero_mask = count_gt:clone()
+	nzero_mask = nzero_mask:fill(1)
+	if non_zero == 1 then
+		nzero_mask = nzero_mask:fill(0)
+		nzero_mask[count_gt:ne(0)] = 1
+	end
+	local mse = torch.pow(targets - count_pred, 2)
+	mse = torch.cmul(mse, nzero_mask)
+	mse = mse:mean()
+	nzero = nzero_mask:mean()
+	mse = mse/nzero
+	return mse
+ end
 
 function eval:mrmse(non_zero, count_pred, count_gt)
 	--[[

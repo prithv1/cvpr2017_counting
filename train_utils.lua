@@ -21,7 +21,7 @@ local utils = require 'utils'
 
 local train_utils = torch.class('train_utils')
 
-function train_utils:__init(split_list, feature_directory, imagelist_dir, disc, feature_dimensions, num_classes, num_epochs, optimizer, learning_rate, weight_decay, loss_criterion)
+function train_utils:__init(feature_directory, imagelist_dir, disc, feature_dimensions, num_classes, num_epochs, optimizer, learning_rate, weight_decay, loss_criterion)
 	--[[
 	(Initialize settings for forward passes)
 	Arguments
@@ -38,7 +38,6 @@ function train_utils:__init(split_list, feature_directory, imagelist_dir, disc, 
 	**********
 	(Nothing, just initializes stuff)
 	]]
-	self.split_list = split_list
 	self.feat_dir = feature_directory
 	self.imlist_dir = imagelist_dir
 	self.feat_dim = feature_dimensions
@@ -136,7 +135,7 @@ function prepare_sequence(feat_mat)
 	return perm_feat1, perm_feat2
 end
 
-function train_utils:glance_train(model, gpu_flag, gpu_id, cudnn_flag, des_bsize, param, gparam)
+function train_utils:glance_train(split_list, model, gpu_flag, gpu_id, cudnn_flag, des_bsize, param, gparam)
 	--[[
 	(Training function for glancing and associative subitizing)
 	(Associative Subitizing is glancing at a cell-level; Specify mode and discretization)
@@ -155,7 +154,7 @@ function train_utils:glance_train(model, gpu_flag, gpu_id, cudnn_flag, des_bsize
 	model:training()
 	local split_loss = {}
 	local img_list = {}
-	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
+	local img_file = io.open(self.imlist_dir .. '/' .. split_list)
 	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
 	-- Get batch size
 	local bsize = get_batchsize(#img_list, des_bsize)
@@ -216,7 +215,7 @@ function train_utils:glance_train(model, gpu_flag, gpu_id, cudnn_flag, des_bsize
 	return utils.table_mean(split_loss)
 end
 
-function train_utils:seq_train(model1, model2, gpu_flag, gpu_id, cudnn_flag, des_bsize, param, gparam)
+function train_utils:seq_train(split_list, model1, model2, gpu_flag, gpu_id, cudnn_flag, des_bsize, param, gparam)
 	--[[
 	(Training function for Sequential Subitizing; Forward pass and a backward pass)
 	Arguments
@@ -236,7 +235,7 @@ function train_utils:seq_train(model1, model2, gpu_flag, gpu_id, cudnn_flag, des
 	model2:training()
 	local split_loss = {}
 	local img_list = {}
-	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
+	local img_file = io.open(self.imlist_dir .. '/' .. split_list)
 	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
 	-- Get batch size
 	local bsize = get_batchsize(#img_list, des_bsize)

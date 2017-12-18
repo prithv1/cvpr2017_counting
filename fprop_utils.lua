@@ -16,7 +16,7 @@ require 'math'
 
 local fprop_utils = torch.class('fprop_utils')
 
-function fprop_utils:__init(split_list, feature_directory, imagelist_dir, disc, feature_dimensions, num_classes)
+function fprop_utils:__init(feature_directory, imagelist_dir, disc, feature_dimensions, num_classes)
 	--[[
 	(Initialize settings for forward passes)
 	Arguments
@@ -32,7 +32,6 @@ function fprop_utils:__init(split_list, feature_directory, imagelist_dir, disc, 
 	**********
 	(Nothing, just initializes stuff)
 	]]
-	self.split_list = split_list
 	self.feat_dir = feature_directory
 	self.imlist_dir = imagelist_dir
 	self.feat_dim = feature_dimensions
@@ -119,7 +118,7 @@ function prepare_sequence(feat_mat)
 	return perm_feat1, perm_feat2
 end
 
-function fprop_utils:glance_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
+function fprop_utils:glance_fprop(split_list, model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
 	--[[
 	(Forward pass for glancing)
 	Arguments
@@ -136,7 +135,7 @@ function fprop_utils:glance_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize
 	]]
 	model:evaluate()
 	local img_list = {}
-	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
+	local img_file = io.open(self.imlist_dir .. '/' .. split_list)
 	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
 	-- Get batch size
 	local bsize = get_batchsize(#img_list, des_bsize)
@@ -183,7 +182,7 @@ function fprop_utils:glance_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize
 	return Yo
 end
 
-function fprop_utils:aso_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
+function fprop_utils:aso_fprop(split_list, model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
 	--[[
 	(Forward pass for associative subitizing)
 	Arguments
@@ -201,7 +200,7 @@ function fprop_utils:aso_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
 	model:evaluate()
 	-- Keep smaller batch size for associative subitizing
 	local img_list = {}
-	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
+	local img_file = io.open(self.imlist_dir .. '/' .. split_list)
 	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
 	-- Get batch size
 	local bsize = get_batchsize(#img_list, des_bsize)
@@ -254,7 +253,7 @@ function fprop_utils:aso_fprop(model, gpu_flag, gpu_id, cudnn_flag, des_bsize)
 	return Yo
 end
 
-function fprop_utils:seq_fprop(model1, model2, gpu_flag, gpu_id, cudnn_flag, des_bsize)
+function fprop_utils:seq_fprop(split_list, model1, model2, gpu_flag, gpu_id, cudnn_flag, des_bsize)
 	--[[
 	(Forward pass for glancing)
 	Arguments
@@ -274,7 +273,7 @@ function fprop_utils:seq_fprop(model1, model2, gpu_flag, gpu_id, cudnn_flag, des
 	model2:evaluate()
 	-- Keep smaller batch size for associative subitizing
 	local img_list = {}
-	local img_file = io.open(self.imlist_dir .. '/' .. self.split_list)
+	local img_file = io.open(self.imlist_dir .. '/' .. split_list)
 	if img_file then for line in img_file:lines() do table.insert(img_list, line) end end
 	-- Get batch size
 	local bsize = get_batchsize(#img_list, des_bsize)

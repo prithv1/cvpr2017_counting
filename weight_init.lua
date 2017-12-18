@@ -1,19 +1,8 @@
---
---------------------------------------------------------------------------------
---         File:  weight_init.lua
---  Description:  Weight initialization schemes for torch, from 
---  							https://github.com/e-lab/torch-toolbox/blob/master/Weight-init/weight-init.lua
---       Author:  Ramakrishna Vedantam (vrama91), <vrama91@vt.edu>
--- Organization:  Computer Vision Lab, Virginia Tech
---      Created:  03/07/2016
---------------------------------------------------------------------------------
---
-
-
--- Different weight initialization methods
+#! /usr/bin/env lua
+--[[ Different weight initialization methods
 --
 -- > model = require('weight-init')(model, 'heuristic')
---
+--]]
 require("nn")
 
 
@@ -48,10 +37,14 @@ end
 local function w_init(net, arg)
 	-- choose initialization method
 	local method = nil
-	if     arg == 'heuristic'    then method = w_init_heuristic
-	elseif arg == 'xavier'       then method = w_init_xavier
-	elseif arg == 'xavier_caffe' then method = w_init_xavier_caffe
-	elseif arg == 'kaiming'      then method = w_init_kaiming
+	if arg == 'heuristic' then 
+		method = w_init_heuristic
+	elseif arg == 'xavier' then 
+		method = w_init_xavier
+	elseif arg == 'xavier_caffe' then 
+		method = w_init_xavier_caffe
+	elseif arg == 'kaiming' then 
+		method = w_init_kaiming
 	else
 		assert(false)
 	end
